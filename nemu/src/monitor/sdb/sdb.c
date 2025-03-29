@@ -55,6 +55,8 @@ static int cmd_q(char *args) {
 
 static int cmd_si(char *args);
 
+static int cmd_info(char *args);
+
 static int cmd_help(char *args);
 
 static struct {
@@ -66,6 +68,7 @@ static struct {
   { "c", "Continue the execution of the program", cmd_c },
   { "q", "Exit NEMU", cmd_q },
   { "si", "Single step execution", cmd_si },
+  { "info", "Print program state", cmd_info },
 
   /* TODO: Add more commands */
 
@@ -111,6 +114,21 @@ static int cmd_si(char *args) {
     }
   }
   cpu_exec(n);
+  return 0;
+}
+
+static int cmd_info(char *args) {
+  if (args == NULL) {
+    printf("Usage: info r - Print register values\n");
+    return 0;
+  }
+
+  char *arg = strtok(args, " ");
+  if (strcmp(arg, "r") == 0) {
+    isa_reg_display();
+  } else {
+    printf("Unknown info subcommand '%s'\n", arg);
+  }
   return 0;
 }
 
