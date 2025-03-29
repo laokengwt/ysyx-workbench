@@ -26,20 +26,22 @@ const char *regs[] = {
 void isa_reg_display() {
   // 打印通用寄存器
   for (int i = 0; i < 32; i++) {
-  printf("%-4s 0x%02x %02x %02x %02x\n", 
+  printf("%-4s 0x%02x %02x %02x %02x  %d\n", 
     regs[i],
     (cpu.gpr[i] >> 24) & 0xff,
     (cpu.gpr[i] >> 16) & 0xff,
     (cpu.gpr[i] >> 8) & 0xff,
-    cpu.gpr[i] & 0xff);
+    cpu.gpr[i] & 0xff,
+    cpu.gpr[i]);
   }
 
   // 打印PC寄存器
-  printf("pc   0x%02x %02x %02x %02x\n", 
+  printf("pc   0x%02x %02x %02x %02x  %d\n", 
     (cpu.pc >> 24) & 0xff,
     (cpu.pc >> 16) & 0xff,
     (cpu.pc >> 8) & 0xff,
-    cpu.pc & 0xff);
+    cpu.pc & 0xff,
+    cpu.pc);
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {
