@@ -17,6 +17,7 @@
 #include <cpu/cpu.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <memory/vaddr.h>
 #include "sdb.h"
 
 static int is_batch_mode = false;
@@ -49,8 +50,15 @@ static int cmd_c(char *args) {
 
 
 static int cmd_q(char *args) {
+  nemu_state.state = NEMU_QUIT;
   return -1;
 }
+
+static int cmd_si(char *args);
+
+static int cmd_info(char *args);
+
+static int cmd_x(char *args);
 
 static int cmd_help(char *args);
 
@@ -62,6 +70,9 @@ static struct {
   { "help", "Display information about all supported commands", cmd_help },
   { "c", "Continue the execution of the program", cmd_c },
   { "q", "Exit NEMU", cmd_q },
+  { "si", "Single step execution", cmd_si },
+  { "info", "Print program state", cmd_info },
+  { "x", "Scan the memory", cmd_x },
 
   /* TODO: Add more commands */
 
@@ -89,6 +100,82 @@ static int cmd_help(char *args) {
     }
     printf("Unknown command '%s'\n", arg);
   }
+  return 0;
+}
+
+static int cmd_si(char *args) {
+  int n = 1;
+  if (args != NULL) {
+    char *endptr;
+    n = strtol(args, &endptr, 10);
+    if (*endptr != '\0') {
+      printf("Invalid step number: %s\n", args);
+      return 0;
+    }
+    if (n <= 0) {
+      printf("Step number must be positive\n");
+      return 0;
+    }
+  }
+  cpu_exec(n);
+  return 0;
+}
+
+static int cmd_info(char *args) {
+  if (args == NULL) {
+    printf("Usage: info r - Print register values\n");
+    return 0;
+  }
+
+  char *arg = strtok(args, " ");
+  if (strcmp(arg, "r") == 0) {
+    isa_reg_display();
+  } else {
+    printf("Unknown info subcommand '%s'\n", arg);
+  }
+  return 0;
+}
+
+static int cmd_x(char *args) {
+  // 默认参数
+  int count = 1;
+  vaddr_t addr = 0;
+
+  // 首先尝试解析第一个参数是否为地址
+  char *arg = strtok(args, " ");
+  if (arg) {
+      // 检查是否是十六进制地址
+      if (strncmp(arg, "0x", 2) == 0) {
+          addr = strtoul(arg, NULL, 16);
+      } 
+      // 否则尝试解析为计数
+      else {
+          count = atoi(arg);
+          if (count <= 0) {
+              printf("Invalid count: %s\n", arg);
+              return 0;
+          }
+          
+          // 解析地址参数
+          arg = strtok(NULL, " ");
+          if (!arg || strncmp(arg, "0x", 2) != 0) {
+              printf("Missing or invalid address (must be 0x...)\n");
+              return 0;
+          }
+          addr = strtoul(arg, NULL, 16);
+      }
+  } else {
+      printf("Usage: x [N] 0xADDR\n");
+      return 0;
+  }
+
+  // 读取并显示内存
+  for (int i = 0; i < count; i++) {
+      vaddr_t current_addr = addr + i * 4;
+      word_t value = vaddr_read(current_addr, 4);
+      printf("0x%08x: 0x%08x\n", current_addr, value);
+  }
+
   return 0;
 }
 
