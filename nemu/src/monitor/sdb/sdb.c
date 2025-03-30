@@ -60,6 +60,8 @@ static int cmd_info(char *args);
 
 static int cmd_x(char *args);
 
+static int cmd_p(char *args);
+
 static int cmd_help(char *args);
 
 static struct {
@@ -73,6 +75,7 @@ static struct {
   { "si", "Single step execution", cmd_si },
   { "info", "Print program state", cmd_info },
   { "x", "Scan the memory", cmd_x },
+  { "p", "Evaluate expression", cmd_p },
 
   /* TODO: Add more commands */
 
@@ -174,6 +177,26 @@ static int cmd_x(char *args) {
       vaddr_t current_addr = addr + i * 4;
       word_t value = vaddr_read(current_addr, 4);
       printf("0x%08x: 0x%08x\n", current_addr, value);
+  }
+
+  return 0;
+}
+
+static int cmd_p(char *args) {
+  static int p_count = 1;  // 用于记录p命令的序号
+  
+  if (args == NULL || *args == '\0') {
+    printf("Usage: p EXPR\n");
+    return 0;
+  }
+
+  bool success = true;
+  word_t result = expr(args, &success);
+  
+  if (success) {
+    printf("$%d = 0x%08x %d\n", p_count++, result, result);
+  } else {
+    printf("Failed to evaluate expression: %s\n", args);
   }
 
   return 0;
