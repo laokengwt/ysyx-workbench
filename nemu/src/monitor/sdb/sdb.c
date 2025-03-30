@@ -17,6 +17,7 @@
 #include <cpu/cpu.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <memory/vaddr.h>
 #include "sdb.h"
 
 static int is_batch_mode = false;
@@ -57,6 +58,8 @@ static int cmd_si(char *args);
 
 static int cmd_info(char *args);
 
+static int cmd_x(char *args);
+
 static int cmd_help(char *args);
 
 static struct {
@@ -69,6 +72,7 @@ static struct {
   { "q", "Exit NEMU", cmd_q },
   { "si", "Single step execution", cmd_si },
   { "info", "Print program state", cmd_info },
+  { "x", "Scan the memory", cmd_x },
 
   /* TODO: Add more commands */
 
@@ -129,6 +133,49 @@ static int cmd_info(char *args) {
   } else {
     printf("Unknown info subcommand '%s'\n", arg);
   }
+  return 0;
+}
+
+static int cmd_x(char *args) {
+  // 默认参数
+  int n = 1;
+  vaddr_t addr = 0;
+
+  // 解析参数
+  char *arg = strtok(args, " ");
+  if (arg) {
+      // 解析N
+      n = atoi(arg);
+      if (n <= 0) {
+          printf("Invalid count: %s\n", arg);
+          return 0;
+      }
+
+      // 解析地址表达式
+      arg = strtok(NULL, " ");
+      if (arg) {
+          // 检查是否为十六进制格式
+          if (strncmp(arg, "0x", 2) != 0) {
+              printf("Address must be in hex format (0x...)\n");
+              return 0;
+          }
+          addr = strtoul(arg, NULL, 16);
+      } else {
+          printf("Missing address argument\n");
+          return 0;
+      }
+  } else {
+      printf("Usage: x [N] 0xADDR\n");
+      return 0;
+  }
+
+  // 读取并显示内存
+  for (int i = 0; i < n; i++) {
+      vaddr_t current_addr = addr + i * 4;
+      word_t value = vaddr_read(current_addr, 4);
+      printf("0x%08x: 0x%08x\n", current_addr, value);
+  }
+
   return 0;
 }
 
