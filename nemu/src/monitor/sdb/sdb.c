@@ -138,31 +138,31 @@ static int cmd_info(char *args) {
 
 static int cmd_x(char *args) {
   // 默认参数
-  int n = 1;
+  int count = 1;
   vaddr_t addr = 0;
 
-  // 解析参数
+  // 首先尝试解析第一个参数是否为地址
   char *arg = strtok(args, " ");
   if (arg) {
-      // 解析N
-      n = atoi(arg);
-      if (n <= 0) {
-          printf("Invalid count: %s\n", arg);
-          return 0;
-      }
-
-      // 解析地址表达式
-      arg = strtok(NULL, " ");
-      if (arg) {
-          // 检查是否为十六进制格式
-          if (strncmp(arg, "0x", 2) != 0) {
-              printf("Address must be in hex format (0x...)\n");
+      // 检查是否是十六进制地址
+      if (strncmp(arg, "0x", 2) == 0) {
+          addr = strtoul(arg, NULL, 16);
+      } 
+      // 否则尝试解析为计数
+      else {
+          count = atoi(arg);
+          if (count <= 0) {
+              printf("Invalid count: %s\n", arg);
+              return 0;
+          }
+          
+          // 解析地址参数
+          arg = strtok(NULL, " ");
+          if (!arg || strncmp(arg, "0x", 2) != 0) {
+              printf("Missing or invalid address (must be 0x...)\n");
               return 0;
           }
           addr = strtoul(arg, NULL, 16);
-      } else {
-          printf("Missing address argument\n");
-          return 0;
       }
   } else {
       printf("Usage: x [N] 0xADDR\n");
@@ -170,7 +170,7 @@ static int cmd_x(char *args) {
   }
 
   // 读取并显示内存
-  for (int i = 0; i < n; i++) {
+  for (int i = 0; i < count; i++) {
       vaddr_t current_addr = addr + i * 4;
       word_t value = vaddr_read(current_addr, 4);
       printf("0x%08x: 0x%08x\n", current_addr, value);
