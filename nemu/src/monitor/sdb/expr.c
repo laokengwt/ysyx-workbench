@@ -289,6 +289,25 @@ int32_t eval(int p, int q, bool *legal) {
     return eval(p + 1, q - 1, legal);
   }
   else {
+    // handle negative signs(maybe there will be more than one negative sign)
+    if (p <= q && tokens[p].type == TK_NEG) {
+      int32_t val = eval(p + 1, q, legal);
+      if (!*legal) return 0;
+      return -(int32_t)val;
+    }
+
+    if (p <= q && tokens[p].type == TK_DEREF) {
+      int32_t addr = eval(p + 1, q, legal);
+      if (!*legal) return 0;
+      // 检查地址是否对齐
+      if (addr & 0x3) {
+          *legal = false;
+          return 0;
+      }
+      int32_t val = vaddr_read(addr, 4);
+      return val;
+    }
+
     // find the position of operator
     int op = get_main_op(p, q);
     // printf("%d\n", op);
@@ -316,26 +335,6 @@ int32_t eval(int p, int q, bool *legal) {
       case TK_AND: return (val1 && val2) ? 1 : 0;
       default: assert(0);
     }
-    
-    // handle negative signs(maybe there will be more than one negative sign)
-    while (p <= q && tokens[p].type == TK_NEG) {
-      int32_t val = eval(p + 1, q, legal);
-      if (!*legal) return 0;
-      return -(int32_t)val;
-    }
-
-    while (p <= q && tokens[p].type == TK_DEREF) {
-      int32_t addr = eval(p + 1, q, legal);
-      if (!*legal) return 0;
-      // 检查地址是否对齐
-      if (addr & 0x3) {
-          *legal = false;
-          return 0;
-      }
-      int32_t val = vaddr_read(addr, 4);
-      return val;
-    }
-
   }
 }
 
