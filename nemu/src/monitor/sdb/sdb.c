@@ -19,6 +19,7 @@
 #include <readline/history.h>
 #include <memory/vaddr.h>
 #include "sdb.h"
+#include "watchpoint.h"
 
 static int is_batch_mode = false;
 
@@ -62,6 +63,10 @@ static int cmd_x(char *args);
 
 static int cmd_p(char *args);
 
+static int cmd_w(char *args);
+
+static int cmd_d(char *args);
+
 static int cmd_test(char *args);
 
 static int cmd_help(char *args);
@@ -78,6 +83,8 @@ static struct {
   { "info", "Print program state", cmd_info },
   { "x", "Scan the memory", cmd_x },
   { "p", "Evaluate expression", cmd_p },
+  { "w", "Set watchpoint", cmd_w },
+  { "d", "Delete watchpoint", cmd_d },
   { "test", "Test for evaluating expression", cmd_test },
 
   /* TODO: Add more commands */
@@ -133,12 +140,24 @@ static int cmd_info(char *args) {
     return 0;
   }
 
+  // 解析第一个参数
   char *arg = strtok(args, " ");
+  if (strtok(NULL, " ") != NULL) {
+    printf("Warning: Extra arguments are ignored.\n");
+    printf("Usage: info r|w\n");
+  }
+
+  // 处理不同的子命令
   if (strcmp(arg, "r") == 0) {
     isa_reg_display();
+  } else if (strcmp(arg, "w") == 0) {
+    info_watchpoints();
   } else {
-    printf("Unknown info subcommand '%s'\n", arg);
+    printf("Unknown argument: '%s'\n", arg);
+    printf("Usage: info r|w\n");
+    return 0;
   }
+
   return 0;
 }
 
@@ -186,7 +205,7 @@ static int cmd_x(char *args) {
 }
 
 static int cmd_p(char *args) {
-  static int p_count = 1;  // 用于记录p命令的序号
+  static int p_count = 0;  // 用于记录p命令的序号
   
   if (args == NULL || *args == '\0') {
     printf("Usage: p EXPR\n");
@@ -201,6 +220,37 @@ static int cmd_p(char *args) {
   } else {
     printf("Failed to evaluate expression: %s\n", args);
   }
+
+  return 0;
+}
+
+static int cmd_w(char *args) {
+  if (args == NULL || strlen(args) == 0) {
+    printf("Usage: w EXPR\n");
+    printf("Example: w $eax + 0x100\n");
+    return 0;
+  }
+
+  set_watchpoint(args);
+
+  return 0;
+}
+
+static int cmd_d(char *args) {
+  if (args == NULL || strlen(args) == 0) {
+    printf("Usage: d N\n");
+    return 0;
+  }
+
+  // 解析参数 N
+  int NO;
+  if (sscanf(args, "%d", &NO) != 1) {
+    printf("Invalid argument: %s\n", args);
+    return 0;
+  }
+
+  // 调用 delete_watchpoint() 删除监视点
+  delete_watchpoint(NO);
 
   return 0;
 }
