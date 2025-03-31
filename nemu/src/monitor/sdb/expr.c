@@ -25,12 +25,23 @@ enum {
   TK_NOTYPE = 256,
   TK_EQ,
   TK_NEQ,
-  TK_AND,
+  TK_LE,     // <=
+  TK_GE,     // >=
+  TK_LT,     // <
+  TK_GT,     // >
+  TK_AND,    // &&
+  TK_OR,     // ||
   TK_NUM,
   TK_HEX,
   TK_REG,
   TK_NEG,
-  TK_DEREF
+  TK_DEREF,
+  TK_BITAND, // &
+  TK_BITOR,  // |
+  TK_BITXOR, // ^
+  TK_BITNOT, // ~
+  TK_LSHIFT, // <<
+  TK_RSHIFT  // >>
   /* TODO: Add more token types */
 };
 
@@ -55,7 +66,16 @@ static struct rule {
   {"\\)", ')'},         // right bracket
   {"==", TK_EQ},        // equal
   {"!=", TK_NEQ},           // not equal
-  {"&&", TK_AND},           // logical AND
+  {"<=", TK_LE},
+  {">=", TK_GE},
+  {"<", TK_LT},
+  {">", TK_GT},
+  {"&&", TK_AND},
+  {"\\|\\|", TK_OR},
+  {"&", TK_BITAND},
+  {"\\|", TK_BITOR},
+  {"\\^", TK_BITXOR},
+  {"~", TK_BITNOT}
 };
 
 #define NR_REGEX ARRLEN(rules)
@@ -119,7 +139,12 @@ static bool make_token(char *e) {
 
           case TK_EQ:
           case TK_NEQ:
+          case TK_LE:
+          case TK_GE:
+          case TK_LT:
+          case TK_GT:
           case TK_AND:
+          case TK_OR:
           case TK_NUM:
           case TK_HEX:
           case TK_REG:
@@ -129,6 +154,9 @@ static bool make_token(char *e) {
           case '/':
           case '(':
           case ')':
+          case TK_BITAND:
+          case TK_BITOR:
+          case TK_BITXOR:
             tokens[nr_token].type = rules[i].token_type;
             // printf("%d\n", tokens[nr_token].type);
             strncpy(tokens[nr_token].str, substr_start, substr_len);
@@ -162,8 +190,11 @@ static bool make_token(char *e) {
          tokens[i-1].type == '/' ||
          tokens[i-1].type == '(' ||
          tokens[i-1].type == TK_EQ ||
-         tokens[i-1].type == TK_NEQ ||
-         tokens[i-1].type == TK_AND)) {
+         tokens[i-1].type == TK_NEQ || tokens[i-1].type == TK_LE ||
+         tokens[i-1].type == TK_GE || tokens[i-1].type == TK_LT ||
+         tokens[i-1].type == TK_GT || tokens[i-1].type == TK_AND ||
+         tokens[i-1].type == TK_OR || tokens[i-1].type == TK_BITAND ||
+         tokens[i-1].type == TK_BITOR || tokens[i-1].type == TK_BITXOR)) {
       tokens[i].type = TK_NEG;
     }
     
@@ -176,8 +207,11 @@ static bool make_token(char *e) {
          tokens[i-1].type == '/' ||
          tokens[i-1].type == '(' ||
          tokens[i-1].type == TK_EQ ||
-         tokens[i-1].type == TK_NEQ ||
-         tokens[i-1].type == TK_AND ||
+         tokens[i-1].type == TK_NEQ || tokens[i-1].type == TK_LE ||
+         tokens[i-1].type == TK_GE || tokens[i-1].type == TK_LT ||
+         tokens[i-1].type == TK_GT || tokens[i-1].type == TK_AND ||
+         tokens[i-1].type == TK_OR || tokens[i-1].type == TK_BITAND ||
+         tokens[i-1].type == TK_BITOR || tokens[i-1].type == TK_BITXOR ||
          tokens[i-1].type == TK_NEG)) {
       tokens[i].type = TK_DEREF;
     }
@@ -216,17 +250,34 @@ int get_main_op(int p, int q) {
     if (depth == 0) {
       int current_priority = INT8_MAX;
       
-      if (tokens[i].type == TK_AND) {
-        current_priority = 0; // Lowest priority
+      if (tokens[i].type == TK_OR) {
+        current_priority = 0;
       }
-      else if (tokens[i].type == TK_EQ || tokens[i].type == TK_NEQ) {
+      else if (tokens[i].type == TK_AND) {
         current_priority = 1;
       }
-      else if (tokens[i].type == '+' || tokens[i].type == '-') {
+      else if (tokens[i].type == TK_EQ || tokens[i].type == TK_NEQ || 
+               tokens[i].type == TK_LE || tokens[i].type == TK_GE ||
+               tokens[i].type == TK_LT || tokens[i].type == TK_GT) {
         current_priority = 2;
       }
-      else if (tokens[i].type == '*' || tokens[i].type == '/') {
+      else if (tokens[i].type == TK_BITAND) {
         current_priority = 3;
+      }
+      else if (tokens[i].type == TK_BITXOR) {
+        current_priority = 4;
+      }
+      else if (tokens[i].type == TK_BITOR) {
+        current_priority = 5;
+      }
+      else if (tokens[i].type == TK_LSHIFT || tokens[i].type == TK_RSHIFT) {
+        current_priority = 6;
+      }
+      else if (tokens[i].type == '+' || tokens[i].type == '-') {
+        current_priority = 7;
+      }
+      else if (tokens[i].type == '*' || tokens[i].type == '/') {
+        current_priority = 8;
       }
       else {
         continue; // Not an operator we care about
@@ -311,6 +362,11 @@ int32_t eval(int p, int q, bool *legal) {
         int32_t val = vaddr_read(addr, 4);
         return val;
       }
+
+      if (tokens[p].type == TK_BITNOT) {
+        int32_t val = eval(p + 1, q, legal);
+        return ~val;
+      }
     }
     
     int32_t val1 = eval(p, op - 1, legal);
@@ -327,9 +383,17 @@ int32_t eval(int p, int q, bool *legal) {
         return 0;
       }
       return val1 / val2;
-      case TK_EQ: return val1 == val2 ? 1 : 0;
-      case TK_NEQ: return val1 != val2 ? 1 : 0;
-      case TK_AND: return (val1 && val2) ? 1 : 0;
+      case TK_EQ: return val1 == val2;
+      case TK_NEQ: return val1 != val2;
+      case TK_LE: return val1 <= val2;
+      case TK_GE: return val1 >= val2;
+      case TK_LT: return val1 < val2;
+      case TK_GT: return val1 > val2;
+      case TK_AND: return val1 && val2;
+      case TK_OR: return val1 || val2;
+      case TK_BITAND: return val1 & val2;
+      case TK_BITOR: return val1 | val2;
+      case TK_BITXOR: return val1 ^ val2;
       default: assert(0);
     }
   }
