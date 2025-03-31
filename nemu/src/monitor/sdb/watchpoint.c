@@ -130,7 +130,7 @@ void scan_watchpoints() {
       printf("Old value = %d\n", wp->last_value);
       printf("New value = %d\n", current_value);
 
-      if (nemu_state.state == NEMU_QUIT) return;
+      if (nemu_state.state == NEMU_END) return;
       else nemu_state.state = NEMU_STOP;
 
       // 更新上一次的值
