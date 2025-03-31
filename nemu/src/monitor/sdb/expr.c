@@ -19,6 +19,7 @@
  * Type 'man regex' for more information about POSIX regex functions.
  */
 #include <regex.h>
+#include <memory/vaddr.h>
 
 enum {
   TK_NOTYPE = 256,
@@ -29,6 +30,7 @@ enum {
   TK_HEX,
   TK_REG,
   TK_NEG,
+  TK_DEREF
   /* TODO: Add more token types */
 };
 
@@ -47,7 +49,7 @@ static struct rule {
   {"\\$[a-zA-Z0-9_]+", TK_REG}, // reg
   {"\\+", '+'},         // plus
   {"-", '-'},           // subtract
-  {"\\*", '*'},         // multiply
+  {"\\*", '*'},         // multiply or dereference
   {"/", '/'},           // divide
   {"\\(", '('},         // left bracket
   {"\\)", ')'},         // right bracket
@@ -104,27 +106,6 @@ static bool make_token(char *e) {
         // Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s",
             // i, rules[i].regex, position, substr_len, substr_len, substr_start);
 
-        // handle the negative sign
-        if (rules[i].token_type == '-') {
-          // check if '-' is a negative sign
-          if (position== 0 || e[position - 1] == '(' || 
-            (nr_token > 0 && 
-              (tokens[nr_token - 1].type == '+' || 
-              tokens[nr_token - 1].type == '-' || 
-              tokens[nr_token - 1].type == '*' || 
-              tokens[nr_token - 1].type == '/' ||
-              tokens[nr_token - 1].type == TK_NEG))) {
-                // Treat '-' as a negative sign
-                tokens[nr_token].type = TK_NEG; // Add a new token type for negative sign
-                strncpy(tokens[nr_token].str, substr_start, substr_len);
-                tokens[nr_token].str[substr_len] = '\0';
-                // printf("%d\n", tokens[nr_token].type);
-                nr_token++;
-                position += substr_len;
-                break;
-              }
-        }
-
         position += substr_len;
 
         /* TODO: Now a new token is recognized with rules[i]. Add codes
@@ -167,6 +148,38 @@ static bool make_token(char *e) {
     if (i == NR_REGEX) {
       printf("no match at position %d\n%s\n%*.s^\n", position, e, position, "");
       return false;
+    }
+  }
+
+  /* Second pass: identify special cases (negative and dereference) */
+  for (i = 0; i < nr_token; i++) {
+    /* Handle negative sign */
+    if (tokens[i].type == '-' && 
+        (i == 0 || 
+         tokens[i-1].type == '+' ||
+         tokens[i-1].type == '-' ||
+         tokens[i-1].type == '*' ||
+         tokens[i-1].type == '/' ||
+         tokens[i-1].type == '(' ||
+         tokens[i-1].type == TK_EQ ||
+         tokens[i-1].type == TK_NEQ ||
+         tokens[i-1].type == TK_AND)) {
+      tokens[i].type = TK_NEG;
+    }
+    
+    /* Handle dereference */
+    if (tokens[i].type == '*' && 
+        (i == 0 || 
+         tokens[i-1].type == '+' ||
+         tokens[i-1].type == '-' ||
+         tokens[i-1].type == '*' ||
+         tokens[i-1].type == '/' ||
+         tokens[i-1].type == '(' ||
+         tokens[i-1].type == TK_EQ ||
+         tokens[i-1].type == TK_NEQ ||
+         tokens[i-1].type == TK_AND ||
+         tokens[i-1].type == TK_NEG)) {
+      tokens[i].type = TK_DEREF;
     }
   }
 
@@ -281,6 +294,18 @@ int32_t eval(int p, int q, bool *legal) {
       int32_t val = eval(p + 1, q, legal);
       if (!*legal) return 0;
       return -(int32_t)val;
+    }
+
+    while (p <= q && tokens[p].type == TK_DEREF) {
+      int32_t addr = eval(p + 1, q, legal);
+      if (!*legal) return 0;
+      // 检查地址是否对齐
+      if (addr & 0x3) {
+          *legal = false;
+          return 0;
+      }
+      int32_t val = vaddr_read(addr, 4);
+      return val;
     }
 
     // find the position of operator
