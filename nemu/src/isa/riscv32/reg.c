@@ -45,5 +45,21 @@ void isa_reg_display() {
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {
+  // 遍历寄存器名称数组，查找匹配的寄存器
+  for (int i = 0; i < 32; i++) {
+    if (strcmp(s, regs[i]) == 0) {
+      *success = true;
+      return cpu.gpr[i]; // 返回寄存器的值
+    }
+  }
+
+  // 检查是否是 PC 寄存器
+  if (strcmp(s, "pc") == 0) {
+    *success = true;
+    return cpu.pc; // 返回 PC 寄存器的值
+  }
+
+  // 如果没有找到匹配的寄存器，设置 success 为 false
+  *success = false;
   return 0;
 }

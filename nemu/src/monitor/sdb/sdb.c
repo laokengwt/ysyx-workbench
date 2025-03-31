@@ -60,6 +60,10 @@ static int cmd_info(char *args);
 
 static int cmd_x(char *args);
 
+static int cmd_p(char *args);
+
+static int cmd_test(char *args);
+
 static int cmd_help(char *args);
 
 static struct {
@@ -73,6 +77,8 @@ static struct {
   { "si", "Single step execution", cmd_si },
   { "info", "Print program state", cmd_info },
   { "x", "Scan the memory", cmd_x },
+  { "p", "Evaluate expression", cmd_p },
+  { "test", "Test for evaluating expression", cmd_test },
 
   /* TODO: Add more commands */
 
@@ -177,6 +183,73 @@ static int cmd_x(char *args) {
   }
 
   return 0;
+}
+
+static int cmd_p(char *args) {
+  static int p_count = 1;  // 用于记录p命令的序号
+  
+  if (args == NULL || *args == '\0') {
+    printf("Usage: p EXPR\n");
+    return 0;
+  }
+
+  bool success = true;
+  word_t result = expr(args, &success);
+  
+  if (success) {
+    printf("$%d = 0x%08x %d\n", p_count++, result, result);
+  } else {
+    printf("Failed to evaluate expression: %s\n", args);
+  }
+
+  return 0;
+}
+
+static int cmd_test(char *args){
+  int right_ans = 0;
+  FILE *input_file = fopen("/home/zhou/ysyx-learning/ysyx-workbench/nemu/tools/gen-expr/input", "r");
+    if (input_file == NULL) {
+        perror("Error opening input file");
+        return 1;
+    }
+ 
+    char record[1024];
+    unsigned real_val;
+    char buf[1024];
+ 
+    // 循环读取每一条记录
+    for (int i = 0; i < 963; i++) {
+        // 读取一行记录
+        if (fgets(record, sizeof(record), input_file) == NULL) {
+            perror("Error reading input file");
+            break;
+        }
+ 
+        // 分割记录，获取数字和表达式
+        char *token = strtok(record, " ");
+        if (token == NULL) {
+            printf("Invalid record format\n");
+            continue;
+        }
+        real_val = atoi(token); // 将数字部分转换为整数
+ 
+        // 处理表达式部分，可能跨越多行
+        strcpy(buf, ""); // 清空buf
+        while ((token = strtok(NULL, "\n")) != NULL) {
+            strcat(buf, token);
+            strcat(buf, " "); // 拼接换行后的部分，注意添加空格以分隔多行内容
+        }
+
+        bool flag = false;
+        unsigned res = expr(buf,&flag); 
+        // 输出结果
+        printf("Computed Value: %u,Real Value: %u, Expression: %s\n", res,real_val, buf);
+
+        if(res == real_val)right_ans ++;
+    }
+    printf("test 963 expressions,the accuracy is %d/963\n",right_ans);
+    fclose(input_file);
+    return 0;
 }
 
 void sdb_set_batch_mode() {
