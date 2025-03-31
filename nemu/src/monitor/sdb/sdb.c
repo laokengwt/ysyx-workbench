@@ -218,7 +218,7 @@ static int cmd_test(char *args){
     char buf[1024];
  
     // 循环读取每一条记录
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 963; i++) {
         // 读取一行记录
         if (fgets(record, sizeof(record), input_file) == NULL) {
             perror("Error reading input file");
@@ -247,7 +247,7 @@ static int cmd_test(char *args){
 
         if(res == real_val)right_ans ++;
     }
-    printf("test 963 expressions,the accuracy is %d/100\n",right_ans);
+    printf("test 963 expressions,the accuracy is %d/963\n",right_ans);
     fclose(input_file);
     return 0;
 }
