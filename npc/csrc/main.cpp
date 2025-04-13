@@ -15,12 +15,17 @@ void reset(int n) {
   top.rst = 0;
 }
 
+extern "C" void sim_finish() {
+    printf("EBREAK encountered, stopping via DPI-C.\n");
+    exit(0);  // 强制终止仿真
+}
+
 int main (int argc, char** argv){
   reset(1);
   init_memory();
     
   // 测试阶段
-  for (int cycle = 0; cycle < 3; cycle++) {
+  while (1) {
     top.inst = pmem_read(top.pc);
     top.eval();
     single_cycle();

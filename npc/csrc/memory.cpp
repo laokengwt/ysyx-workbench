@@ -18,6 +18,7 @@ void init_memory(void) {
     mem[0] = 0x00f00093;  // addi x1, x0, 15
     mem[1] = 0x00100113;  // addi x2, x0, 1
     mem[2] = 0x00108193;  // addi x3, x1, 1
+    mem[3] = 0x00100073;  // addi x3, x1, 1
 }
 
 // 存储器读取函数
