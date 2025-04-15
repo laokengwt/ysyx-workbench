@@ -95,6 +95,7 @@ static void statistic() {
 }
 
 void assert_fail_msg() {
+  display_inst();
   isa_reg_display();
   statistic();
 }
@@ -113,6 +114,8 @@ void cpu_exec(uint64_t n) {
 
   execute(n);
 
+  // place it here just for test
+  display_inst();
   uint64_t timer_end = get_time();
   g_timer += timer_end - timer_start;
 

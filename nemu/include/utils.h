@@ -75,3 +75,6 @@ uint64_t get_time();
 
 
 #endif
+
+void store_inst(word_t pc, uint32_t inst);
+void display_inst();
