@@ -115,7 +115,7 @@ void init_monitor(int argc, char *argv[]) {
   init_log(log_file);
 
   /* Parse the elf file and init the Symbol Table*/
-  parse_elf(elf_file);
+  IFDEF(CONFIG_FTRACE,parse_elf(elf_file));
   // print_all_symbols();
 
   /* Initialize memory. */
