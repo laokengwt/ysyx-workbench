@@ -18,8 +18,14 @@ char *strcpy(char *dst, const char *src) {
 
 char *strncpy(char *dst, const char *src, size_t n) {
   char *temp = dst;
-  while (n-- && (*temp++ = *src++));
-  while (n-- > 0) *temp = '\0';
+  while (n && (*temp = *src) != '\0') {
+    temp++;
+    src++;
+    n--;
+  }
+  while (n--) {
+    *temp++ = '\0';
+  }
   return dst;
 }
 

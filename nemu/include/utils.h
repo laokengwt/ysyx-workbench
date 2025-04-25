@@ -78,3 +78,9 @@ uint64_t get_time();
 
 void store_inst(word_t pc, uint32_t inst);
 void display_inst();
+void display_pread(paddr_t addr, int len);
+void display_pwrite(paddr_t addr, int len, word_t data);
+void parse_elf(char *elf_file);
+void print_all_symbols();
+void trace_func_call(unsigned long pc, unsigned long target_addr);
+void trace_func_ret(unsigned long pc);
